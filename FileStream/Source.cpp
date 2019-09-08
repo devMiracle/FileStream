@@ -82,6 +82,10 @@ void Start();//+
 void ExtractDataFromFile();//+
 bool AppendDataToFile(string, string);//+
 void ShowAll();//+
+void StartWithMenu();//+
+string* UserInputLoginPass(string*);//+
+int CheckBaseLoginPassword(string, string);//+
+int CheckLoginNew(string);//+
 
 struct LoginPass
 {
@@ -93,6 +97,8 @@ vector<LoginPass> dataLoginPass;
 
 enum button { registration = 1, autorization, showAll, exitProg };
 
+string pathToFile = { "login-pass.txt" };
+
 void main()
 {
 	SetConsoleTitle("FILESTREAM");
@@ -103,13 +109,13 @@ void main()
 
 	SetConsoleCP(1251);
 	SetConsoleOutputCP(1251);
-	//setlocale(LC_ALL, "rus");
+	setlocale(LC_ALL, "rus");
 
 	srand(time(NULL));
 
 	//write your code HERE!
-
-	Start();
+	//Start();
+	StartWithMenu();
 
 	//_getch();
 	//system("pause");
@@ -120,13 +126,14 @@ void main()
 	//Sleep(1000);
 }
 
+//старт обычного меню
 void Start()
 {
-	
+
 	int number;
 	bool whileKey = false;
 	string* str;
-	bool (*operation[])(string, string) = { Registration, Authorization };
+	bool(*operation[])(string, string) = { Registration, Authorization };
 	string login;
 	string password;
 	do
@@ -174,10 +181,10 @@ void Start()
 		whileKey = true;
 	} while (whileKey);
 }
-
+//извлечь всю базу из txt в vector
 void ExtractDataFromFile()
 {
-	ifstream ifstr("login-Pass.txt", ios::in);
+	ifstream ifstr(pathToFile, ios::in);
 	string data;
 	string login;
 	string password;
@@ -193,10 +200,10 @@ void ExtractDataFromFile()
 	}
 	ifstr.close();
 }
-
+//ƒозаписать строку в конец текстового файла
 bool AppendDataToFile(string login, string password)
 {
-	ofstream ofstr("login-Pass.txt", ios::app);
+	ofstream ofstr(pathToFile, ios::app);
 	if (ofstr.is_open())
 	{
 		ofstr << login << ':' << password << '\n';
@@ -206,29 +213,29 @@ bool AppendDataToFile(string login, string password)
 	else
 		return false;
 }
-
+//вывести всю базу на экран
 void ShowAll()
 {
 	ExtractDataFromFile();
 	system("cls");
 	color(6, 0);
-	cout << "LOGIN : PASSWORD\n";	
+	cout << "LOGIN : PASSWORD\n";
 	color(7, 0);
 	for (int i = 0; i < dataLoginPass.size(); i++)
 	{
 		cout << dataLoginPass[i].login << " : " << dataLoginPass[i].password << '\n';
 	}
 }
-
+//регисртаци€ пользовател€
 bool Registration(string login, string password)
 {
 	int resultCheck = CheckLoginInDataBase(login);
-	if (0 <= resultCheck )
+	if (0 <= resultCheck)
 		return false;
 	else if (resultCheck == -1)
 		return AppendDataToFile(login, password) ? true : false;
 }
-
+//проверка логина из внутреннего хранилища vector'а
 int CheckLoginInDataBase(string login)
 {
 	ExtractDataFromFile();
@@ -237,12 +244,12 @@ int CheckLoginInDataBase(string login)
 			return i;
 	return -1;
 }
-
-bool CheckPasswordInDataBase(int position, string password) 
-{ 
-	return dataLoginPass[position].password == password ? true : false; 
+//проверка порол€ из внутреннего хранилища vector'а
+bool CheckPasswordInDataBase(int position, string password)
+{
+	return dataLoginPass[position].password == password ? true : false;
 }
-
+//јвторизаци€ пользовател€
 bool Authorization(string login, string password)
 {
 	int resultCheck = CheckLoginInDataBase(login);
@@ -250,4 +257,150 @@ bool Authorization(string login, string password)
 		return CheckPasswordInDataBase(resultCheck, password) ? true : false;
 	else if (resultCheck == -1)
 		return false;
+}
+
+
+
+
+//Ќовые функции
+
+//–егистраци€
+bool RegistrationNew(string login, string password)
+{
+	int result = CheckLoginNew(login);
+	if (result >= 0)
+		return false;
+	else if (result == -1)
+		return AppendDataToFile(login, password) ? true : false;
+}
+//нова€ авторизаци€(в отличии от старой авторизации, не требует загрузки всей базы в vector, а провер€ет логин в потоке построчно. “ем самым дойд€ до нужной позиции, не провер€ет оставшуюс€ часть базы)
+bool AuthorizationNew(string login, string password)
+{
+	int result = CheckBaseLoginPassword(login, password);
+	if (result == 1)
+		return true;
+	else if (result == 0)
+		return false;//TODO: return 0 - логина не существует(дл€ вывода сообщений)
+	else if (result == -1)
+		return false;//TODO: return -1 - логин найден, но пароль не подходит(дл€ вывода сообщений)
+}
+//ѕровер€ет логин в потоке построчно
+int CheckLoginNew(string login)
+{
+	ifstream ifstr(pathToFile, ios::in);
+	string data;
+	int iterator = 0;
+	if (ifstr.is_open())
+	{
+		while (getline(ifstr, data))
+		{
+			if (login == data.substr(0 < data.find(':')))
+				return iterator;
+			iterator++;
+		}
+	}
+	ifstr.close();
+	return -1;
+}
+//¬вод логина и парол€ пользователем в консоль
+string* UserInputLoginPass(string* loginPassword)
+{
+	string login;
+	string password;
+	system("cls");
+	cout << "Ћогин: ";
+	cin >> login;
+	cout << "ѕароль: ";
+	cin >> password;
+	loginPassword[0] = login;
+	loginPassword[1] = password;
+	return loginPassword;
+}
+//старт графического меню
+void StartWithMenu()
+{
+	string menuTitle[3] = { "–егистраци€", "јвторизаци€", "¬есь список" };
+	int target = 1;
+	int xCoord = 0;
+	int yCoord = 0;
+	int button = 0;
+	bool isInTheCycle = false;
+	bool(*operation[])(string, string) = { RegistrationNew, AuthorizationNew };
+	string* ptrLoginPassword;
+	string loginPasArray[2];
+	do
+	{
+		system("cls");
+		for (int i = 0; i < 3; i++)
+		{
+			if (target - 1 == i)
+				color(Green, Black);
+			cursor(xCoord, yCoord + i);
+			cout << menuTitle[i];
+			color(White, Black);
+		}
+		button = _getch();
+		switch (button)
+		{
+		case Enter:
+			if (target == 3)
+			{
+				ShowAll();
+				_getch();
+				break;
+			}
+			ptrLoginPassword = UserInputLoginPass(loginPasArray);
+			if (operation[target - 1](loginPasArray[0], loginPasArray[1]))//вызов соответствующей функции на которую указывает курсор(через указатель на функцию)
+			{
+				//system("cls");
+				color(Green, Black);
+				cout << "”спешно!";
+				color(White, Black);
+				_getch();
+			}
+			else
+			{
+				//system("cls");
+				color(Red, Black);
+				cout << "„то-то пошло не так!";
+				color(White, Black);
+				_getch();
+			}
+			break;
+		case Esc:
+			isInTheCycle = true;
+			break;
+		case Up:
+			if (target == 1)
+				break;
+			target--;
+			break;
+		case Down:
+			if (target == 3)
+				break;
+			target++;
+			break;
+		}
+	} while (!isInTheCycle);
+}
+//ѕровер€ет наличие логина и после сравнивает пароли(возврат: 1 - логин и пароль верны / 0 - такого логина не существует / -1 - логин найден, но пароль не подходит)
+int CheckBaseLoginPassword(string login, string password)
+{
+	ifstream ifstr(pathToFile, ios::in);
+	string data;
+	if (ifstr.is_open())
+	{
+		while (getline(ifstr, data))
+		{
+			if (login == data.substr(0, data.find(':')))
+			{
+				if (password != data.substr(data.find(':') + 1, data.length()))
+					return -1;//неверный пароль(при этом логин подошЄл)
+				else
+					return 1;//логин и пароль совпали
+			}
+		}
+	}
+	ifstr.close();
+	return 0;//такого логина не существует(пароль даже не стал провер€тьс€)
 }
